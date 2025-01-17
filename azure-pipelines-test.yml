@@ -1,0 +1,44 @@
+trigger:
+- none
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+
+- checkout: self
+  fetchDepth: 0
+
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '7.0.x'
+
+- script: |
+    dotnet tool install --global dotnet-sonarscanner
+    echo "::add-path::$(dotnet tool path)"
+  displayName: 'Install SonarScanner for MSBuild'
+
+- script: |
+    dotnet-sonarscanner begin /k:"ExpenseTracker-.NET" /n:"ExpenseTracker-.NET" /v:"1.0.2" /d:sonar.host.url="https://sonar.DOMAIN.io" /d:sonar.token="$(SONAR_TOKEN)"
+  displayName: 'SonarQube Analysis Begin'
+  env:
+    SONAR_TOKEN: $(SONAR_TOKEN)
+
+- script: |
+    dotnet restore
+    dotnet build --configuration Release
+  displayName: 'Restore and Build'
+
+- script: |
+    dotnet test --configuration Release
+  displayName: 'Run Tests'
+
+- script: |
+    dotnet-sonarscanner end /d:sonar.login="$(SONAR_TOKEN)"
+  displayName: 'SonarQube Analysis End'
+  env:
+    SONAR_TOKEN: $(SONAR_TOKEN)
